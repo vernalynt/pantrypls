@@ -126,7 +126,6 @@ One Flask file (`app.py`), one HTML file with plain JavaScript (`static/index.ht
 
 ## Honest limits
 
-- It has been used on an Android phone. iPhone Safari has not been verified by the author yet.
 - The NFC links are ordinary URLs and have not been tested on a physical tag yet.
 - There are no push notifications yet. Warnings show when you open the page. A self-hosted push service such as [ntfy](https://ntfy.sh/) is the planned next step.
 - There are no user accounts.
