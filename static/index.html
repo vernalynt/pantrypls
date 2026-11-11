@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pantry">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/icon-180.png">
+<link rel="icon" href="/static/icon-192.png">
+<title>Pantrypls</title>
+<style>
+  :root {
+    --bg: #0b0b0c; --panel: #151517; --line: #2a2a2e; --text: #e8e8ea; --muted: #8a8a92;
+    --amber: #e0a030; --blue: #3b9cf0; --green: #3ccf7a; --red: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+         padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  h1 { margin: 0; font: 600 26px Georgia, serif; letter-spacing: -0.5px; }
+  #stamp { color: var(--muted); font-size: 12px; }
+  .bar { display: flex; gap: 10px; margin-bottom: 12px; }
+  /* 16px inputs: iPhone Safari zooms the page on focus for anything smaller */
+  input, textarea, select, button { font: inherit; font-size: 16px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  input[type=date] { min-height: 44px; }
+  #q, #qt { flex: 1; min-width: 0; }
+  #qt { resize: none; height: 44px; overflow-y: hidden; line-height: 22px; }
+  button { cursor: pointer; touch-action: manipulation; }
+  button:hover { border-color: #55555c; }
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .chip { border-radius: 999px; padding: 6px 12px; font-size: 14px; min-height: 36px; }
+  .chip.on { background: #26262b; border-color: #77777f; }
+  .chip.warn { border-color: var(--amber); color: var(--amber); }
+  .chip.bad { border-color: var(--red); color: var(--red); }
+  .chip.new { border-style: dashed; }
+  .grid { column-width: 300px; column-gap: 14px; }
+  .card { break-inside: avoid; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+  .card.fridge { border-color: var(--blue); } .card.pantry { border-color: var(--amber); } .card.freezer { border-color: #7fd6e8; }
+  .card.bin { border-color: var(--green); } .card.special { border-color: var(--red); }
+  .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .head h2 { margin: 0; font-size: 16px; }
+  .head small { color: var(--muted); font-weight: 400; }
+  .tools { display: flex; gap: 6px; }
+  .tools button { padding: 4px 10px; font-size: 13px; color: var(--muted); }
+  .it { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+  .it:first-of-type { border-top: none; }
+  .nm { flex: 1; min-width: 0; text-align: left; background: none; border: none; padding: 6px 0; font-weight: 600; word-break: break-word; }
+  .nm small { color: var(--muted); font-weight: 400; display: block; font-size: 12px; }
+  .badge { display: inline-block; margin: 3px 0 0 6px; font-size: 12px; font-weight: 400; padding: 1px 8px; border-radius: 6px; white-space: nowrap; }
+  .nm { overflow-wrap: break-word; word-break: normal; }
+  .badge.soon { color: var(--amber); border: 1px solid var(--amber); }
+  .badge.expired { color: var(--red); border: 1px solid var(--red); }
+  .badge.low { color: var(--amber); }
+  .badge.out { color: var(--red); }
+  .step { display: flex; align-items: center; gap: 4px; }
+  .step button { width: 44px; height: 44px; padding: 0; font-size: 22px; line-height: 1; border-radius: 12px; }
+  .step b { min-width: 34px; text-align: center; font-size: 18px; }
+  .it.low .step b { color: var(--amber); } .it.out .step b { color: var(--red); }
+  .alerts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .empty, .hint { color: var(--muted); padding: 24px 0; text-align: center; }
+  .hint { padding: 6px 0; font-size: 13px; text-align: left; }
+  dialog { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 14px; width: min(480px, 94vw); }
+  dialog::backdrop { background: rgba(0,0,0,.7); }
+  label { color: var(--muted); font-size: 12px; display: block; margin-top: 10px; }
+  .row { display: flex; gap: 10px; margin-top: 12px; } .row > * { flex: 1; min-width: 0; }
+  .full { width: 100%; }
+  #toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #2a1a1a; border: 1px solid var(--red);
+           color: var(--text); padding: 10px 14px; border-radius: 10px; max-width: 90vw; z-index: 9; }
+  #toast.ok { background: #14241b; border-color: var(--green); }
+  .danger { color: var(--red); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>Pantrypls</h1><span id="stamp"></span></header>
+  <form class="bar" id="quick">
+    <textarea id="qt" rows="1" placeholder="Quick add: milk +2" autocomplete="off" autocapitalize="none"></textarea>
+    <button id="go">Add</button>
+  </form>
+  <div class="bar">
+    <input id="q" type="search" placeholder="Search" autocomplete="off">
+    <button id="new">+ Item</button>
+  </div>
+  <div class="alerts" id="alerts"></div>
+  <div class="tags" id="tags"></div>
+  <div class="hint" id="hint" hidden></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" hidden>Nothing here yet. Try typing <b>milk +2 loc:fridge</b> above.</div>
+</div>
+
+<!-- add / edit item -->
+<dialog id="dlg">
+  <form method="dialog" id="form">
+    <b id="dtitle">Add item</b>
+    <label>Name</label>
+    <input id="f_name" class="full" maxlength="100" autocomplete="off">
+    <div id="f_whereBox">
+      <label>Where</label>
+      <select id="f_where" class="full"></select>
+      <input id="f_newloc" class="full" maxlength="30" placeholder="new location, e.g. garage" hidden style="margin-top:8px">
+    </div>
+    <div class="row">
+      <div><label>Quantity</label><input id="f_qty" type="number" inputmode="numeric" min="0" max="9999" class="full"></div>
+      <div><label>Unit (optional)</label><input id="f_unit" class="full" maxlength="20" placeholder="lbs, boxes"></div>
+    </div>
+    <label>Warn me at or below (0 = only when it runs out)</label>
+    <input id="f_thr" type="number" inputmode="numeric" min="0" max="9999" class="full">
+    <div id="f_expBox">
+      <label>Expires (optional)</label>
+      <input id="f_exp" type="date" class="full">
+    </div>
+    <div class="row">
+      <button type="button" id="f_del" class="danger" hidden>Delete</button>
+      <button type="button" id="f_cancel">Cancel</button>
+      <button id="f_save" value="ok">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- bin rename / delete -->
+<dialog id="bdlg">
+  <form method="dialog" id="bform">
+    <b>Edit bin</b>
+    <label>Name</label><input id="b_name" class="full" maxlength="100" autocomplete="off">
+    <label>Where it is (optional)</label><input id="b_where" class="full" maxlength="100" autocomplete="off">
+    <div class="row">
+      <button type="button" id="b_del" class="danger">Delete bin</button>
+      <button type="button" id="b_cancel">Cancel</button>
+      <button id="b_save" value="ok">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- NFC tag link (shown in a box because plain-http pages cannot use the clipboard) -->
+<dialog id="ldlg">
+  <b>NFC tag link</b>
+  <p class="hint" style="padding:6px 0">Write this address onto the tag. It uses the server's Tailscale IP and never changes if you rename things.</p>
+  <input id="l_url" class="full" readonly>
+  <div class="row"><button type="button" id="l_close">Close</button></div>
+</dialog>
+
+<div id="toast" hidden></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let data = null;
+let state = { filter: "all", q: "" };   // filter: all | low | soon | <place key like loc:fridge or bin:3>
+let editing = null;                      // item being edited, or null when adding
+
+// ---- the page address mirrors the filter, so NFC tags can open a place directly ----
+function filterFromPath() {
+  const p = decodeURIComponent(location.pathname);
+  let m = p.match(/^\/loc\/(.+)$/);
+  if (m) return "loc:" + (m[1] === "unsorted" ? "" : m[1].toLowerCase());
+  m = p.match(/^\/bin\/(\d+)$/);
+  return m ? "bin:" + m[1] : "all";
+}
+state.filter = filterFromPath();
+function syncUrl() {
+  const p = data && data.places.find(x => x.key === state.filter);
+  try { history.replaceState(null, "", p ? p.path : "/"); } catch (e) {}
+}
+
+// ---- api ----
+async function api(path, method, body) {
+  const r = await fetch(path, { method: method || "GET", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(d.error || "Something went wrong."); e.data = d; throw e; }
+  return d;
+}
+let toastTimer;
+function toast(msg, ok) {
+  const t = $("#toast"); t.textContent = msg; t.className = ok ? "ok" : ""; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, ok ? 2500 : 5000);
+}
+
+// Taps on + / - run one at a time. Each call is atomic on the server, so a second phone is never overwritten.
+let chain = Promise.resolve(), pending = 0, latest = null;
+function enqueue(fn) {
+  pending++;
+  chain = chain
+    .then(async () => { try { latest = await fn(); } catch (e) { toast(e.message); if (e.data && e.data.state) latest = e.data.state; else latest = null; } })
+    .then(async () => { if (--pending === 0) { if (latest) { data = latest; render(); } else await load(); latest = null; } });
+}
+
+async function load() {
+  try { data = await api("/api/state"); render(); $("#stamp").textContent = "updated " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+  catch (e) { $("#stamp").textContent = "offline"; }
+}
+
+// ---- rendering ----
+function expText(i) {
+  if (i.days_left === null) return "";
+  if (i.days_left < 0) return i.days_left === -1 ? "expired yesterday" : "expired " + (-i.days_left) + "d ago";
+  if (i.days_left === 0) return "expires today";
+  return i.days_left === 1 ? "expires tomorrow" : "expires in " + i.days_left + "d";
+}
+
+function itemRow(i, showPlace) {
+  const cls = [i.out ? "out" : i.low ? "low" : ""].join(" ");
+  // the badge sits under the name (not beside it) so long names never get squeezed into letter-by-letter wrapping
+  const badge = i.exp_status !== "ok" ? `<span class="badge ${i.exp_status}">${esc(expText(i))}</span>`
+    : i.out ? `<span class="badge out">out</span>` : i.low ? `<span class="badge low">low</span>` : "";
+  const sub = [showPlace ? i.place : "", i.unit, i.exp_status === "ok" && i.days_left !== null ? expText(i) : ""].filter(Boolean).join(" · ");
+  const el = document.createElement("div");
+  el.className = "it " + cls;
+  el.innerHTML = `<button class="nm" type="button">${esc(i.name)}${sub ? `<small>${esc(sub)}</small>` : ""}${badge}</button>
+    <div class="step"><button type="button" class="m" aria-label="one less">&minus;</button><b class="q">${i.quantity}</b><button type="button" class="p" aria-label="one more">+</button></div>`;
+  const step = d => {
+    const q = el.querySelector(".q");
+    q.textContent = Math.max(0, Math.min(9999, +q.textContent + d));   // instant feedback, server answer replaces it
+    enqueue(() => api(`/api/items/${i.kind}/${i.id}`, "PATCH", { delta: d }));
+  };
+  el.querySelector(".m").onclick = () => step(-1);
+  el.querySelector(".p").onclick = () => step(1);
+  el.querySelector(".nm").onclick = () => openEdit(i);
+  return el;
+}
+
+function cardFor(title, subtitle, cls, items, opts = {}) {
+  const el = document.createElement("div");
+  el.className = "card " + cls;
+  el.innerHTML = `<div class="head"><h2>${esc(title)} <small>${esc(subtitle || "")}</small></h2><div class="tools"></div></div>`;
+  const tools = el.querySelector(".tools");
+  const btn = (txt, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = txt; b.onclick = fn; tools.appendChild(b); };
+  if (opts.place) {
+    btn("link", () => { $("#l_url").value = data.base_url + opts.place.path; $("#ldlg").showModal(); $("#l_url").select(); });
+    if (opts.place.kind === "bin") btn("edit", () => openBin(opts.place));
+  }
+  if (!items.length) { const e = document.createElement("div"); e.className = "hint"; e.textContent = "Empty"; el.appendChild(e); }
+  items.forEach(i => el.appendChild(itemRow(i, opts.showPlace)));
+  return el;
+}
+
+function render() {
+  if (!data) return;
+  // a tag or bookmark can point at a bin that was deleted: fall back to everything
+  if (!["all", "low", "soon"].includes(state.filter) && !data.places.some(p => p.key === state.filter)) state.filter = "all";
+  const q = state.q.trim().toLowerCase();
+  const match = i => !q || i.name.toLowerCase().includes(q) || (i.place || "").toLowerCase().includes(q);
+  const all = data.places.flatMap(p => p.items);
+  const c = data.counts;
+
+  // summary chips
+  const al = $("#alerts"); al.innerHTML = "";
+  const addAlert = (txt, cls, f) => { const b = document.createElement("button"); b.className = "chip " + cls; b.textContent = txt; b.onclick = () => { state.filter = f; render(); }; al.appendChild(b); };
+  if (c.expired) addAlert(c.expired + " expired", "bad", "soon");
+  if (c.soon) addAlert(c.soon + " expiring soon", "warn", "soon");
+  if (c.low) addAlert(c.low + " low or out", "warn", "low");
+
+  // filter chips
+  const bar = $("#tags"); bar.innerHTML = "";
+  const mk = (label, on, fn, extra) => { const b = document.createElement("button"); b.className = "chip" + (on ? " on" : "") + (extra ? " " + extra : ""); b.textContent = label; b.onclick = fn; bar.appendChild(b); return b; };
+  mk("All", state.filter === "all", () => { state.filter = "all"; render(); });
+  data.places.forEach(p => {
+    if (p.kind === "loc" && p.name === "" && !p.items.length) return;
+    mk((p.kind === "bin" ? "\u{1F4E6} " : "") + p.title + " " + p.items.length, state.filter === p.key, () => { state.filter = p.key; render(); });
+  });
+  mk("+ Bin", false, () => {
+    const inp = document.createElement("input");
+    inp.placeholder = "bin name"; inp.maxLength = 100; inp.style.cssText = "border-radius:999px;padding:6px 12px;width:160px";
+    bar.lastChild.replaceWith(inp); inp.focus();
+    let done = false;
+    const save = async () => {
+      if (done) return; done = true;
+      if (inp.value.trim()) { try { data = await api("/api/bins", "POST", { name: inp.value }); const b = data.places.find(p => p.kind === "bin" && p.title.toLowerCase() === inp.value.trim().toLowerCase()); if (b) state.filter = b.key; } catch (e) { toast(e.message); } }
+      render();
+    };
+    inp.onkeydown = e => { if (e.key === "Enter") save(); if (e.key === "Escape") { done = true; render(); } };
+    inp.onblur = save;
+  }, "new");
+
+  // cards
+  const grid = $("#grid"); grid.innerHTML = "";
+  let shown = 0;
+  const hint = $("#hint"); hint.hidden = true;
+  if (state.filter === "low" || state.filter === "soon") {
+    const list = state.filter === "low" ? all.filter(i => i.low) : all.filter(i => i.exp_status !== "ok");
+    list.sort(state.filter === "soon" ? (a, b) => a.days_left - b.days_left : (a, b) => a.quantity - b.quantity);
+    const items = list.filter(match);
+    grid.appendChild(cardFor(state.filter === "low" ? "Low or out" : "Expiring or expired", "", "special", items, { showPlace: true }));
+    shown = 1;
+    hint.hidden = false; hint.textContent = "Filtered view. Tap All to see everything.";
+  } else {
+    data.places.forEach(p => {
+      if (state.filter !== "all" && state.filter !== p.key) return;
+      const items = p.items.filter(match);
+      if (state.filter === "all" && !items.length && (q || (p.kind === "loc" && !DEFAULTS.includes(p.name)))) return;
+      grid.appendChild(cardFor(p.title, p.kind === "bin" ? p.subtitle : "", p.kind === "bin" ? "bin" : (DEFAULTS.includes(p.name) ? p.name : ""), items, { place: p }));
+      shown++;
+    });
+  }
+  $("#empty").hidden = shown > 0 || all.length > 0;
+  syncUrl();
+}
+const DEFAULTS = ["fridge", "pantry", "freezer"];
+
+// ---- quick add (the Discord-style shorthand) ----
+function context() {
+  const p = data && data.places.find(x => x.key === state.filter);
+  if (!p) return {};
+  return p.kind === "bin" ? { bin_id: p.id } : { location: p.name };
+}
+async function submitQuick() {
+  const text = $("#qt").value;
+  if (!text.trim()) return;
+  $("#go").disabled = true;
+  try {
+    const d = await api("/api/quick", "POST", { text, ...context() });
+    data = d; $("#qt").value = ""; $("#qt").style.height = "44px"; render();
+    if (d.skipped && d.skipped.length) toast("Skipped: " + d.skipped.join("; ") + '. Use the form "name +2".');
+    else toast(d.applied + (d.applied === 1 ? " change" : " changes") + " saved", true);
+  } catch (e) { toast(e.message); }
+  $("#go").disabled = false;
+}
+$("#quick").onsubmit = e => { e.preventDefault(); submitQuick(); };
+$("#qt").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey && !/Mobi|iPhone|Android/.test(navigator.userAgent)) { e.preventDefault(); submitQuick(); } };
+$("#qt").oninput = e => { const t = e.target; t.style.height = "44px"; t.style.height = Math.min(t.scrollHeight, 140) + "px"; t.style.overflowY = t.scrollHeight > 140 ? "auto" : "hidden"; };  // grows for multi-line batches
+$("#q").oninput = e => { state.q = e.target.value; render(); };
+
+// ---- add / edit dialog ----
+function fillWhere(selected, allowBins = true) {
+  const sel = $("#f_where"); sel.innerHTML = "";
+  data.places.forEach(p => {
+    if (p.kind === "loc" && p.name === "" && !p.items.length && selected !== "loc:") return;
+    if (p.kind === "bin" && !allowBins) return;   // a pantry item cannot be moved into a bin
+    const o = document.createElement("option"); o.value = p.key; o.textContent = (p.kind === "bin" ? "\u{1F4E6} " : "") + p.title; sel.appendChild(o);
+  });
+  const n = document.createElement("option"); n.value = "new"; n.textContent = "New location..."; sel.appendChild(n);
+  sel.value = selected; if (sel.value !== selected) sel.value = "loc:pantry";
+  whereChanged();
+}
+function whereChanged() {
+  const v = $("#f_where").value;
+  $("#f_newloc").hidden = v !== "new";
+  $("#f_expBox").hidden = v.startsWith("bin:");
+}
+$("#f_where").onchange = whereChanged;
+
+$("#new").onclick = () => {
+  editing = null; $("#form").reset(); $("#dtitle").textContent = "Add item";
+  $("#f_del").hidden = true; $("#f_whereBox").hidden = false;
+  fillWhere(data.places.some(p => p.key === state.filter) ? state.filter : "loc:pantry");
+  $("#f_qty").value = 1; $("#f_thr").value = 0;
+  $("#dlg").showModal();
+};
+function openEdit(i) {
+  editing = i; $("#form").reset(); $("#dtitle").textContent = "Edit item";
+  $("#f_name").value = i.name; $("#f_qty").value = i.quantity; $("#f_unit").value = i.unit; $("#f_thr").value = i.threshold;
+  $("#f_del").hidden = false;
+  if (i.kind === "bin") { $("#f_whereBox").hidden = true; $("#f_expBox").hidden = true; }
+  else { $("#f_whereBox").hidden = false; fillWhere("loc:" + i.location, false); $("#f_exp").value = i.expires_on || ""; }
+  $("#dlg").showModal();
+}
+$("#f_cancel").onclick = () => $("#dlg").close();
+$("#form").onsubmit = async () => {
+  const where = $("#f_where").value, inBin = where.startsWith("bin:");
+  const base = { name: $("#f_name").value, quantity: $("#f_qty").value, unit: $("#f_unit").value, threshold: $("#f_thr").value };
+  if (!editing || editing.kind === "pantry") {
+    if (!inBin) { base.location = where === "new" ? $("#f_newloc").value : where.slice(4); base.expires_on = $("#f_exp").value || null; }
+  }
+  if (editing) {
+    // Send only what you changed. If the other phone tapped + while this box was open,
+    // resending the old quantity would wipe their tap out.
+    const was = { name: editing.name, quantity: String(editing.quantity), unit: editing.unit, threshold: String(editing.threshold),
+                  location: editing.location, expires_on: editing.expires_on || null };
+    for (const k of Object.keys(base)) if (String(base[k] ?? "") === String(was[k] ?? "")) delete base[k];
+    if (!Object.keys(base).length) return;   // nothing changed, just close
+  }
+  try {
+    if (editing) data = await api(`/api/items/${editing.kind}/${editing.id}`, "PATCH", base);
+    else if (inBin) data = await api("/api/items", "POST", { ...base, kind: "bin", bin_id: +where.slice(4) });
+    else data = await api("/api/items", "POST", { ...base, kind: "pantry" });
+    render();
+  } catch (e) { toast(e.message); if (e.data && e.data.state) { data = e.data.state; render(); } }
+};
+$("#f_del").onclick = async () => {
+  if (!editing || !confirm("Delete " + editing.name + "?")) return;
+  try { data = await api(`/api/items/${editing.kind}/${editing.id}`, "DELETE"); render(); } catch (e) { toast(e.message); }
+  $("#dlg").close();
+};
+
+// ---- bin dialog ----
+let editBin = null;
+function openBin(p) { editBin = p; $("#b_name").value = p.title; $("#b_where").value = p.subtitle || ""; $("#bdlg").showModal(); }
+$("#b_cancel").onclick = () => $("#bdlg").close();
+$("#bform").onsubmit = async () => {
+  try { data = await api("/api/bins/" + editBin.id, "PATCH", { name: $("#b_name").value, location: $("#b_where").value }); render(); } catch (e) { toast(e.message); }
+};
+$("#b_del").onclick = async () => {
+  if (!confirm("Delete the bin " + editBin.title + " and everything in it?")) return;
+  try { data = await api("/api/bins/" + editBin.id, "DELETE"); state.filter = "all"; render(); } catch (e) { toast(e.message); }
+  $("#bdlg").close();
+};
+$("#l_close").onclick = () => $("#ldlg").close();
+
+// ---- keep both phones fresh ----
+const dialogOpen = () => document.querySelector("dialog[open]");
+const refresh = () => { if (!pending && !document.hidden && !dialogOpen() && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") load(); };
+document.addEventListener("visibilitychange", () => { if (!document.hidden && !pending) load(); });
+window.addEventListener("focus", () => { if (!pending) load(); });
+setInterval(refresh, 30000);
+load();
+</script>
+</body>
+</html>

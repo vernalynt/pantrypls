@@ -1,0 +1,17 @@
+services:
+  pantrypls:
+    build: .
+    container_name: pantrypls
+    ports:
+      # Safe default: only this computer can reach it. To use it from your phone, set BIND_IP in .env
+      # to a private address (for example your Tailscale IP). Never publish it to the open internet,
+      # there is no login.
+      - "${BIND_IP:-127.0.0.1}:${PORT:-5056}:5056"
+    volumes:
+      - ./data:/data            # holds pantry.db, the only thing you need to back up
+    environment:
+      - TZ=${TZ:-UTC}
+      - APP_TZ=${TZ:-UTC}       # decides what "today" means for expiry dates
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://localhost:5056}   # NFC tag links start with this
+      - EXPIRY_WARN_DAYS=${EXPIRY_WARN_DAYS:-3}
+    restart: unless-stopped
